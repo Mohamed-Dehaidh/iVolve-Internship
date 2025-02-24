@@ -8,19 +8,11 @@
 ## Steps
 ### 1. Create the ivolve group
 ```
-<<<<<<< HEAD
 sudo groupadd ivolveuser
 ```
 ### 2. Create the ivolveuser user and add it to ivolve group 
 ```
-sudo adduser ivolve
-=======
-sudo adduser ivolve
-```
-### 2. Create the ivolveuser user and add it to ivolve group 
-```
-sudo groupadd ivolveuser
->>>>>>> e657c83178e3bff26c8bf80dc9b3f166fc9c3ed5
+sudo useradd -mG ivolve ivolveuser
 ```
 ### 3. Add password to ivolveuser
 ```
