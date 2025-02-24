@@ -8,7 +8,7 @@
 ## Steps
 ### 1. Create the ivolve group
 ```
-sudo groupadd ivolveuser
+sudo groupadd ivolve
 ```
 ### 2. Create the ivolveuser user and add it to ivolve group 
 ```
