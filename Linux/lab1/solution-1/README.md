@@ -32,5 +32,3 @@ sudo apt install httpd
 ```
 sudo apt install nginx
 ```
-# 🙏 Thank You
-Thank you for using this script. Your feedback and support mean a lot to us.

@@ -81,6 +81,3 @@ crontab -e
 <div align="center">
   <img src="cron-job.png" alt="My Image" width="500">
 </div>
-
-# 🙏 Thank You
-Thank you for using this script. Your feedback and support mean a lot to us.
