@@ -1,0 +1,8 @@
+#!/bin/bash
+# exporting all needed environment variables
+export BACKUP_PATH="/home/ubuntu/backups"
+export BACKUP_FILE="mysql-backup-$(date +"%Y%m%d_%H%M%S").sql"
+export CRED_PATH="/home/ubuntu/mysql-backup-creds"
+
+# Load credentials
+source $CRED_PATH

@@ -1,0 +1,3 @@
+#!/bin/bash
+export USERNAME="root"
+export USERPASSWORD="ivolve"
