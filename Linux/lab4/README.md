@@ -77,4 +77,4 @@ UUID="96f56647-1eb5-47dd-84e3-c2b13cb42913" /mnt/ivolve xfs defaults 0 0
 UUID="6fedb8ee-c123-4494-9e1c-b02fb3ae6f04" /mnt/ivolve-lv xfs defaults 0 0
 UUID="96f56647-1eb5-47dd-84e3-c2b13cb42913" none swap sw 0 0
 ```
-Remember to change the value of UUID="96f56647-1eb5-47dd-84e3-c2b13cb42913" with your own UUID
+Remember to change the value of "UUID" with your own
