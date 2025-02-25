@@ -8,7 +8,7 @@ sudo service mysql status
 ```
 #### 1.1. It should look like this
 <div align="center">
-  <img src="iVolve-Internship/Linux/lab2/mysql-works.png" alt="My Image" width="500">
+  <img src="mysql-works.png" alt="My Image" width="500">
 </div>
 
 ### 2. Login to MYSQL as root and change the password 
@@ -79,7 +79,7 @@ sudo chmod +x /home/ubuntu/mysql-backup.sh
 crontab -e
 ```
 <div align="center">
-  <img src="iVolve-Internship/Linux/lab2/cron-job.png" alt="My Image" width="500">
+  <img src="cron-job.png" alt="My Image" width="500">
 </div>
 
 # 🙏 Thank You
