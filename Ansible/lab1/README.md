@@ -1,4 +1,4 @@
-# Lab 7: Install and configure Ansible Automation Platform on control nodes, create inventories of a managed host, and then perform ad-hoc commands to check functionality.
+# Lab 1: Install and configure Ansible Automation Platform on control nodes, create inventories of a managed host, and then perform ad-hoc commands to check functionality.
 ## Prerequisites
 1. Ensure Python is installed on the control node (python is must):
 ```
@@ -15,7 +15,7 @@ sudo apt install python3-pip  # For Ubuntu/Debian
 4. Ensure passwordless SSH access is configured between the control node and managed hosts. but when using AWS EC2 it is already configured.
 ## Steps
 ### 1. Install Ansible on the Control Node:
-#### 1.1 onn Ubuntu/Debian
+#### 1.1 on Ubuntu/Debian
 ```
 sudo apt install ansible -y
 ```

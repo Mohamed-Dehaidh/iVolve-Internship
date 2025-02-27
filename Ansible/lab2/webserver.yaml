@@ -1,0 +1,42 @@
+---
+- name: Install and configure Nginx
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Install UFW
+      apt:
+        name: ufw
+        state: present
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+
+    - name: Edit html file
+      copy:
+        src: /home/ubuntu/ansible/lab2/index.html
+        dest: /var/www/html/index.html
+        mode: '0644'
+      # content: Hello World
+    - name: Allow HTTP (port 80) through the firewall
+      ufw:
+        rule: allow
+        port: 80
+        proto: tcp
+    - name: Allow SSH (port 22) through the firewall
+      ufw:
+        rule: allow
+        port: 22
+        proto: tcp
+
+    - name: Ensure nginx is running
+      service:
+        name: nginx
+        state: started
+        enabled: true

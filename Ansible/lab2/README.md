@@ -1,84 +1,166 @@
-# Lab 7: Install and configure Ansible Automation Platform on control nodes, create inventories of a managed host, and then perform ad-hoc commands to check functionality.
-## Overview: Ansible Automation Platform Setup
-In this lab, you will set up Ansible Automation Platform on a control node, configure an inventory of managed hosts, and use ad-hoc commands to verify connectivity and functionality. Ansible simplifies IT automation, allowing you to manage configurations, deploy applications, and perform ad-hoc tasks efficiently.
+# Lab 2: Ansible Playbooks for Web Server Configuration Write an Ansible playbook to automate the configuration of a web server.
 ## Prerequisites
-(python is must )
-1- Ensure Python is installed on the control node:
+1. Ensure Python is installed on the control node (python is must):
 ```
 python3 --version
 ```
-2- Update the system package manager:
+2. Update the system package manager:
 ```
 sudo apt update  # For Ubuntu/Debian
 ```
-3- Install pip (Python package manager):
+3. Install pip (Python package manager):
 ```
 sudo apt install python3-pip  # For Ubuntu/Debian
 ```
-4- Ensure passwordless SSH access is configured between the control node and managed hosts. If not, refer to the SSH configuration lab.
-## Step By Step 
-### Step 1: Install Ansible on the Control Node
-#### 1- On Ubuntu/Debian
+4. Ensure passwordless SSH access is configured between the control node and managed hosts. but when using AWS EC2 it is already configured.
+## Steps
+### 1. Install Ansible on the Control Node:
+#### 1.1 on Ubuntu/Debian
 ```
 sudo apt install ansible -y
 ```
-#### 2- Verify the installation:
+#### 1.2 on RedHat/CentOS
+```
+sudo yum install ansible -y
+```
+#### 1.3. Verify the installation:
 ```
 ansible --version
 ```
-### Step 2: Configure SSH Access to Managed Hosts
-#### 1- Generate an SSH key (if not already created):
+<div align="center">
+  <img src="ansible-installed.png" alt="My Image" width="500">
+</div>
+
+###  2. Configure SSH Access to Managed Hosts
+#### 2.1 Generate an SSH key on the control node:
 ```
-ssh-keygen -t rsa -b 2048
+ssh-keygen -t rsa -f ~/.ssh/ivolve-key
 ```
-#### 2- Copy the public key to the managed hosts:
+#### 2.2 Transfer the key that was created for you by AWS to the control node, so it can access the worker nodes:
 ```
-ssh-copy-id ubuntu@54.226.126.195
+scp -i AWS_KEY AWS_KEY  USERNAME@EC2_IP:PATH_FOR_KEY
 ```
-#### 3- Test SSH access:
+- Replace EC2_IP with the intended IP address (control node ip)
+- Replace AWS_KEY with the ssh key that was generated for you by AWS
+- Replace USERNAME with the user to be logedin with in the control node
+- Replace PATH_FOR_KEY with the path you want you key to be located
+##### Example
 ```
-ssh ubuntu@54.226.126.195
+scp -i lab5-key.pem lab5-key.pem  ubuntu@18.212.212.222:/home/ubuntu/.ssh/
 ```
-### Step 3: Create an Ansible Inventory File
-#### 1- Create a directory for Ansible files:
+#### 2.3 Transfer the generated public key from control node to worker nodes and use the aws private key to login:
+```
+scp -i AWS_KEY GENERATED_KEY_PUB  USERNAME@EC2_IP:PATH_FOR_KEY
+```
+- Replace EC2_IP with the intended IP address (worker node ip)
+- Replace AWS_KEY with the ssh key that was generated for you by AWS
+- Replace GENERATED_KEY_PUB with the public ssh key that you generated on the control node
+- Replace USERNAME with the user to be logedin with in the worker node
+- Replace PATH_FOR_KEY with the path you want you key to be located
+##### Example
+```
+scp -i ~/.ssh/lab5-key.pem ~/.ssh/ivolve-key.pub ubuntu@54.172.134.15:/home/ubuntu/.ssh/
+```
+### 3. Create an Ansible Inventory File
+#### 3.1. Create a directory for Ansible files:
 ```
 mkdir ~/ansible
 cd ~/ansible
 ```
-#### 2- Create an inventory file:
+#### 3.2. Create an inventory file:
 ```
-nano inventory
+vim ~/ansible/inventory
 ```
-Example content for the inventory file:
+##### Example content for the inventory file:
 ```
 [webservers]
-54.226.126.195 ansible_user=ubuntu
+webserver1 ansible_host=EC2_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/ivolve-key
 [dbservers]
-44.220.164.109 ansible_user=ubuntu
+dbserver1 ansible_host=EC2_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/ivolve-key
 ```
-### Step 4: Test Ansible Configuration
-#### 1- Ping the managed hosts:
+### 4. Create an Ansible configuration file:
 ```
-ansible all -i inventory -m ping
+vim ~/ansible/ansible.cfg
 ```
-all: Targets all hosts in the inventory.
--m ping: Uses the ping module to check connectivity.
-#### 2- Run an ad-hoc command to check uptime:
+##### Example content for the configuration file:
 ```
-ansible all -i inventory -m command -a "uptime"
+[defaults]
+inventory = ./inventoryfile
+remote_user = ubuntu
+private_key_file = ~/.ssh/ivolve-key
+
+[privilege_escalation]
+become = True
+become_method = sudo
+become_user = root
 ```
-### Step 5: Perform Ad-Hoc Tasks
-#### 1- List all files in /etc on all managed hosts:
+### 5. Create the Playbook
+#### 5.1. Create a playbook file:
 ```
-ansible all -i inventory -m command -a "ls /etc"
+vim ~/ansible/webserver.yaml
 ```
-#### 2- Check disk usage:
+#### 5.2. Add the following playbook content:
 ```
-ansible all -i inventory -m command -a "df -h"
+---
+- name: Install and configure Nginx
+  hosts: webservers
+  become: yes
+
+  tasks:
+    # installing firewall on managed servers
+    - name: Install UFW
+      apt:
+        name: ufw
+        state: present
+
+    # enabling the firewall service
+    - name: Enable UFW
+      ufw:
+        state: enabled
+
+    # installing nginx
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+
+    # Adding a html file from the control node to managed servers
+    - name: Edit html file
+      copy:
+        src: /home/ubuntu/ansible/lab2/index.html
+        dest: /var/www/html/index.html
+        mode: '0644'
+      # content: Hello World
+
+    # opening port 80 for http protocol  
+    - name: Allow HTTP (port 80) through the firewall
+      ufw:
+        rule: allow
+        port: 80
+        proto: tcp
+
+    #  opening port 22 for ssh protocol    
+    - name: Allow SSH (port 22) through the firewall
+      ufw:
+        rule: allow
+        port: 22
+        proto: tcp
+
+    # enabling nginx service
+    - name: Ensure nginx is running
+      service:
+        name: nginx
+        state: started
+        enabled: true
 ```
-# Outcome
-- Ansible Automation Platform is installed and configured on the control node.
-- The managed hosts are added to the inventory file.
-- Ad-hoc commands successfully run on the managed hosts, confirming functionality and connectivity.
-# 🙏 Thank You
-Thank you for using this script. Your feedback and support mean a lot to us
+### 6. Run the Playbook
+```
+ansible-playbook -i inventory webserver.yaml
+```
+### 7. On the managed host, check if the web server is running:
+```
+sudo systemctl status nginx
+```
+<div align="center">
+  <img src="nginx-active.png" alt="My Image" width="500">
+</div>
