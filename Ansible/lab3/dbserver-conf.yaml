@@ -1,0 +1,62 @@
+- name: Install MySQL and configure ivolve database
+  hosts: dbservers
+  become: 'yes'
+  vars_files:
+    - ./secrets.yaml # Load encrypted variables from the secrets file
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: 'yes'
+
+    - name: Installing Mysql and dependencies
+      package:
+        name: '{{item}}'
+        state: present
+        update_cache: 'yes'
+      loop:
+        - python3
+        - mysql-server
+        - mysql-client
+        - python3-mysqldb
+        - libmysqlclient-dev
+          #included to ensure that any software or scripts 
+          #that depend on MySQL client libraries can be built and run on the system.
+      become: 'yes'
+
+    - name: Ensure MySQL is running and enabled on boot
+      service:
+        name: mysql
+        state: started
+        enabled: 'yes'
+
+    - name: Change MySQL root password
+      mysql_user:
+        name: root
+        password: '{{ mysql_root_password }}'
+        check_implicit_admin: 'yes' # Allows changing the root password without knowing the current one
+        login_user: root
+        login_password: '' # Empty password for initial setup
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create ivolve database
+      mysql_db:
+        name: ivolve
+        state: present
+        login_user: root
+        login_password: '{{ mysql_root_password }}'
+
+    - name: Create user with all privileges on ivolve database
+      mysql_user:
+        name: ivolve_user
+        password: '{{ mysql_ivolveuser_password }}'
+        priv: '*.*:ALL,GRANT' # Grants ALL privileges on all databases and tables
+        state: present
+        login_user: root
+        login_password: '{{ mysql_root_password }}'
+
+    - name: Flush privileges
+      mysql_query:
+        query: FLUSH PRIVILEGES
+        login_user: root
+        login_password: '{{ mysql_root_password }}'

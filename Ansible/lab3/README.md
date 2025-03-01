@@ -1,84 +1,143 @@
-# Lab 7: Install and configure Ansible Automation Platform on control nodes, create inventories of a managed host, and then perform ad-hoc commands to check functionality.
-## Overview: Ansible Automation Platform Setup
-In this lab, you will set up Ansible Automation Platform on a control node, configure an inventory of managed hosts, and use ad-hoc commands to verify connectivity and functionality. Ansible simplifies IT automation, allowing you to manage configurations, deploy applications, and perform ad-hoc tasks efficiently.
-## Prerequisites
-(python is must )
-1- Ensure Python is installed on the control node:
+# Lab 3: Write an Ansible playbook to install MySQL, create ivovle database, create user with all privileges on ivolve DB. Use Ansible Vault to encrypt sensitive information such as database user password, and incorporate the encrypted data into an Ansible playbook.
+## Steps
+### 1. Set Up Inventory File:
+#### 1.1. Create the inventory file
 ```
-python3 --version
+vim ~/ansible/inventory
 ```
-2- Update the system package manager:
-```
-sudo apt update  # For Ubuntu/Debian
-```
-3- Install pip (Python package manager):
-```
-sudo apt install python3-pip  # For Ubuntu/Debian
-```
-4- Ensure passwordless SSH access is configured between the control node and managed hosts. If not, refer to the SSH configuration lab.
-## Step By Step 
-### Step 1: Install Ansible on the Control Node
-#### 1- On Ubuntu/Debian
-```
-sudo apt install ansible -y
-```
-#### 2- Verify the installation:
-```
-ansible --version
-```
-### Step 2: Configure SSH Access to Managed Hosts
-#### 1- Generate an SSH key (if not already created):
-```
-ssh-keygen -t rsa -b 2048
-```
-#### 2- Copy the public key to the managed hosts:
-```
-ssh-copy-id ubuntu@54.226.126.195
-```
-#### 3- Test SSH access:
-```
-ssh ubuntu@54.226.126.195
-```
-### Step 3: Create an Ansible Inventory File
-#### 1- Create a directory for Ansible files:
-```
-mkdir ~/ansible
-cd ~/ansible
-```
-#### 2- Create an inventory file:
-```
-nano inventory
-```
-Example content for the inventory file:
+#### 1.2. Add the following to the inventory file
 ```
 [webservers]
-54.226.126.195 ansible_user=ubuntu
+webserver1 ansible_host=EC2_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/ivolve-key
+
 [dbservers]
-44.220.164.109 ansible_user=ubuntu
+dbserver1 ansible_host=EC2_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/ivolve-key
 ```
-### Step 4: Test Ansible Configuration
-#### 1- Ping the managed hosts:
+- Replace EC2_IP with your ec2 ip addresse
+### 2. Create the Vault-Encrypted File:
+##### 2.1. Create the secrets.yaml file directrly from Ansible-Vault
+##### 2.2. Create the secrets.yaml as a text file first then encrypt it using Ansible-Vault
+#### 2.1. Create the secrets.yaml file directrly from Ansible-Vault
 ```
-ansible all -i inventory -m ping
+ansible-vault create secrets.yaml
 ```
-all: Targets all hosts in the inventory.
--m ping: Uses the ping module to check connectivity.
-#### 2- Run an ad-hoc command to check uptime:
+#### 2.2. Create the secrets.yaml as a text file first then encrypt it using Ansible-Vault
 ```
-ansible all -i inventory -m command -a "uptime"
+vim ~/ansible/secrets.yaml
+ansible-vault encrypt secrets.yaml
 ```
-### Step 5: Perform Ad-Hoc Tasks
-#### 1- List all files in /etc on all managed hosts:
+- Then enter password for your secrets.yaml file
+#### 2.3. Add Encrypted Variables: 
 ```
-ansible all -i inventory -m command -a "ls /etc"
+mysql_root_password: "ivolveroot"
+mysql_ivolveuser_password: "ivolveuser"
 ```
-#### 2- Check disk usage:
+### 3. Save the secrets.yaml file password in a normal text file. 
+#### 3.1. Create a normal text file
 ```
-ansible all -i inventory -m command -a "df -h"
+vim ~/ansible/vault-pass.txt
 ```
-# Outcome
-- Ansible Automation Platform is installed and configured on the control node.
-- The managed hosts are added to the inventory file.
-- Ad-hoc commands successfully run on the managed hosts, confirming functionality and connectivity.
-# 🙏 Thank You
-Thank you for using this script. Your feedback and support mean a lot to us
+#### 3.2. Add the secrets.yaml file password in the text file
+```
+ivolve-vault-file-password
+```
+#### 3.3. Edit the ansible.cfg file to always use the vault-pass.txt as the password for the secrets.yaml file
+```
+[defaults]
+vault_password_file = ./vault-pass.txt
+```
+### 4.  Write the Ansible Playbook
+#### 4.1. Create the playbook file
+```
+vim ~/ansible/dbserver-conf.yaml
+```
+##### 4.2. Add the following to the playbook file:
+```
+- name: Install MySQL and configure ivolve database
+  hosts: dbservers
+  become: 'yes'
+  vars_files:
+    - ./secrets.yaml # Load encrypted variables from the secrets file
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: 'yes'
+
+    - name: Installing Mysql and dependencies
+      package:
+        name: '{{item}}'
+        state: present
+        update_cache: 'yes'
+      loop:
+        - python3
+        - mysql-server
+        - mysql-client
+        - python3-mysqldb
+        - libmysqlclient-dev
+          #included to ensure that any software or scripts 
+          #that depend on MySQL client libraries can be built and run on the system.
+      become: 'yes'
+
+    - name: Ensure MySQL is running and enabled on boot
+      service:
+        name: mysql
+        state: started
+        enabled: 'yes'
+
+    - name: Change MySQL root password
+      mysql_user:
+        name: root
+        password: '{{ mysql_root_password }}'
+        check_implicit_admin: 'yes' # Allows changing the root password without knowing the current one
+        login_user: root
+        login_password: '' # Empty password for initial setup
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create ivolve database
+      mysql_db:
+        name: ivolve
+        state: present
+        login_user: root
+        login_password: '{{ mysql_root_password }}'
+
+    - name: Create user with all privileges on ivolve database
+      mysql_user:
+        name: ivolve_user
+        password: '{{ mysql_ivolveuser_password }}'
+        priv: '*.*:ALL,GRANT' # Grants ALL privileges on all databases and tables
+        state: present
+        login_user: root
+        login_password: '{{ mysql_root_password }}'
+
+    - name: Flush privileges
+      mysql_query:
+        query: FLUSH PRIVILEGES
+        login_user: root
+        login_password: '{{ mysql_root_password }}'
+```
+### 5. Test the Playbook
+#### 5.1. Run the playbook in check mode :
+```
+ansible-playbook dbserver-conf.yaml.yml --check
+```
+### 6. Execute the Playbook
+```
+ansible-playbook dbserver-conf.yaml 
+```
+### 7.  Validate the Configuration
+#### 7.1. Check MySQL Installation:
+```
+mysql --version
+```
+#### 7.2. Log in to the MySQL database on the target server
+```
+mysql -u ivolve_user -p
+```
+#### 7.3 Run: 
+```
+SHOW DATABASES;
+```
+<div align="center">
+  <img src="login-show-database.png" alt="My Image" width="500">
+</div>
